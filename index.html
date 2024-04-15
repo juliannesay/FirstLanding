@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+<!--meta for the browser to allow for mobile first design-->
+<meta charset="utf-8"/>
+    <meta content="initial-scale=1, maximum-scale=1, user-scalable=no" name="viewport"/>
+    <title>First Landing State Park</title>
+    <link href="https://js.arcgis.com/4.27/esri/themes/light/main.css" rel="stylesheet"/>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&family=Open+Sans:wght@400;700&display=swap');
+
+        html, body {
+            padding: 0;
+            margin: 0;
+            height: 100%;
+            width: 100%;
+            font-family: 'Open Sans', sans-serif;
+        }
+
+        .container {  
+            height: 100vh;
+            display: grid;
+  grid-template-columns: 1fr 1fr 0.5fr;
+  grid-template-rows: 0.1fr 1fr;
+  gap: 0px 0px;
+  grid-auto-flow: row;
+  grid-template-areas:
+    "header header header"
+    "map map map";
+}
+
+.header { grid-area: header; }
+
+.map { grid-area: map; }
+
+        
+        #viewDiv {
+        height: 100%;
+        width: 100%;
+    }
+
+    #layerToggle-section {
+    position: absolute;
+    bottom: 20px; 
+    left: 20px; 
+    background-color: rgba(255,255,255,0.8);
+    padding: 5px;
+    border-radius: 8px;
+    text-align: left;
+    width: auto;
+    max-width: 200px;
+    font-size: 0.8em;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    z-index: 10; 
+}
+
+    .toggle-container {
+        display: flex;
+        align-items: center; 
+        gap: 5px; 
+    }
+
+    #layerToggle-section h3 {
+        margin-top: 0;
+        margin-bottom: 5px;
+        font-size: 1em;
+    }
+
+    #layerToggle-section label {
+        margin: 0; 
+        font-size: 0.8em;
+        white-space: nowrap;
+    }
+
+    #layerToggle-section input[type="checkbox"] {
+        margin: 0; 
+    }
+
+    .header {
+    background-image: linear-gradient(to right, #4A7242, #789C5E); 
+    color: #FFFFFF;
+    text-align: center;
+    padding: 20px 0;
+}
+
+
+.header h1 {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 700;
+    font-size: 2.5em;
+    margin: 0;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.header h2 {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 400;
+    font-size: 1.2em;
+    color: #D9EAD3; 
+    margin-top: 5px;
+}
+
+.welcome-instructions {
+    margin: 0;
+    font-size: 1em;
+}
+
+.welcome-instructions h3 {
+    margin-bottom: 0.5em; 
+}
+
+.welcome-instructions p {
+    margin-bottom: 1em; 
+}
+
+.info-button-container {
+    position: fixed; 
+    top: 10px;
+    right: 10px;
+    z-index: 100; 
+}
+
+#infoButton {
+    padding: 10px;
+    border-radius: 50%; 
+    width: 50px; 
+    height: 50px;
+    font-size: 24px; 
+    line-height: 30px; 
+    text-align: center; 
+    background-color: #4A7242; 
+    color: #ffffff; 
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+
+/* Modal styles */
+.modal {
+    display: block;
+    position: fixed; 
+    z-index: 101; 
+    left: 0;
+    top: 0;
+    width: 100%; 
+    height: 100%; 
+    overflow: auto; 
+    background-color: rgba(0,0,0,0.4); 
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 15% auto; 
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%; 
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.close:hover,
+.close:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+@media screen and (max-width: 600px) {
+    .esri-popup {
+        width: 90%!important;
+        max-height: 50vh!important;
+    }
+}
+
+
+@media screen and (max-width: 600px) {
+    .esri-popup .esri-popup-content {
+        font-size: 14px;
+    }
+    .esri-popup .esri-popup-content img {
+        max-width: 100%; 
+        height: auto;
+    }
+}
+    </style>
+
+<!--importing thr css and libraries for esri.js-->
+<link href="https://js.arcgis.com/4.27/esri/themes/light/main.css" rel="stylesheet"/>
+<script src="https://js.arcgis.com/4.27/">
+</script>
+<!--loading the modules-->
+
+</script>
+<script>
+   require(["esri/config" ,"esri/Map", "esri/views/MapView", "esri/widgets/Locate", "esri/widgets/Search", "esri/layers/FeatureLayer", "esri/widgets/Legend", "esri/widgets/Editor", "esri/widgets/Expand"], (esriConfig, Map, MapView, Locate, Search, FeatureLayer, Legend, Editor, Expand) => {
+            
+            //adding in API Key
+            esriConfig.apiKey = "AAPK50bd33a7f78c4bd98439817346c45150YxOaoF_yiyzXk7-A7yCiGXxGKE8ywmKK9LJdIaiT30z5N5ry4n9ghqL74FTTcDK7";
+
+            //creating the map
+            const map = new Map({
+                basemap: "topo-vector"
+            });
+
+             //This block of code centers on FLSP and sets the zoom
+             const view = new MapView({
+                container: "viewDiv",  
+                    map: map,
+                    center: [ -76.021667, 36.908889],  // Lon and lat of FLSP
+                    zoom: 14
+                });
+
+                view.when(() => {
+        view.popup.autoOpenEnabled = true;
+        view.popup.dockEnabled = true;
+        view.popup.dockOptions = {
+            buttonEnabled: false,
+            breakpoint: false,
+            position: "top-left"
+        };
+
+        // Manually adjust popup position if not docking correctly on smaller screens
+        view.popup.watch("visible", function(visible) {
+            if (visible) {
+                view.popup.dockOptions = {
+                    position: "top-left"
+                };
+            }
+        });
+    });
+            
+            // Define a pop-up for the recreation layer
+            const popupCamp = {
+                "title": "First Landing State Park Campground",
+                "content": "<b>Type of Site:</b> {Type}<br>" +
+                "<b>Site Name:</b> {Name}<br>" +
+                "<b>Reserve A Site Online:</b> <a href='https://www.reservevaparks.com/Web/' target='_blank'>Book Now</a><br>"
+
+            };
+
+            // Adding recreation layer to the map
+            window.campLayer = new FeatureLayer({
+                url: "https://services.arcgis.com/HRPe58bUyBqyyiCt/arcgis/rest/services/Updated_Data_WFL1/FeatureServer/11",
+                title: "Campground",
+                outFields: ["Name", "Type", "Reserve"],
+                popupTemplate: popupCamp,
+                minScale: 10000,
+                maxScale: 0
+            });
+
+            // Adding the new layer 
+            map.add(campLayer);
+
+            //create the const for the search widget, this is done after campLayer is added to the map to allow search to call from it
+            const searchWidget = new Search({
+                view: view,
+                sources: [{
+                    layer: campLayer,
+                    searchFields: ["Name"], //Allow campsites to be searched by their name
+                    displayField: "Name",
+                    exactMatch: false,
+                    outFields: ["*"],
+                    name: "Campgrounds",
+                    placeholder: "Search for campsite e.g., site 100",
+                }]
+            });
+
+            //add and position the search widget
+            view.ui.add(searchWidget, {
+            position: "top-right",
+            });
+            
+            //create the const for the locate widget
+            const locateBtn = new Locate({
+                view: view
+            });
+
+            // Add the locate widget to the top right corner of the view
+            view.ui.add(locateBtn, {
+                position: "top-right"
+            });
+
+            // Add legend widget
+            const legend = new Legend({
+            view: view,
+            style: "card"
+            });
+
+            // Create an Expand widget for the Legend
+            const legendExpand = new Expand({
+            view: view,
+            content: legend,
+            expandIconClass: "esri-icon-layer-list",
+            group: "bottom-right"
+            });
+
+            view.ui.add(legendExpand, "bottom-right")
+
+
+// Define a pop-up for the recreation layer
+const popupRec = {
+    "title": "Recreation Points of Interest",
+    "content": "<b>Name:</b> {Name}<br>"
+};
+
+// Adding recreation layer to the map
+window.recLayer = new FeatureLayer({
+    url: "https://services.arcgis.com/HRPe58bUyBqyyiCt/arcgis/rest/services/Recreation_Points_of_Interest/FeatureServer",
+    outFields: ["Name"],
+    popupTemplate: popupRec,
+    minScale: 10000,
+    maxScale: 0
+});
+
+// Adding the new layer 
+map.add(recLayer);
+
+// Define a pop-up for the recreation layer
+const popupReview = {
+    "title": "Trail Reviews",
+    "content": "<b>Trail:</b> {Trail}<br>" +
+    "<b>Date:</b> {Date}<br>" +
+    "<b>Rating:</b> {Rating}<br>" +
+    "<b>Review:</b> {Review}<br>"
+};
+
+// Adding recreation layer to the map
+window.reviewLayer = new FeatureLayer({
+    url: "https://services.arcgis.com/HRPe58bUyBqyyiCt/arcgis/rest/services/Trail_Reviews/FeatureServer",
+    outFields: ["Trail", "Date", "Rating", "Review"],
+    popupTemplate: popupReview,
+    minScale: 10000,
+    maxScale: 0
+});
+
+// Adding the new layer 
+map.add(reviewLayer);
+
+
+
+// Define a pop-up for the recreation layer
+const popupFacility = {
+    "title": "Park Facility",
+    "content": "<b>Facility:</b> {Name}<br>"
+};
+
+// Adding recreation layer to the map
+window.facilityLayer = new FeatureLayer({
+    url: "https://services.arcgis.com/HRPe58bUyBqyyiCt/arcgis/rest/services/Updated_Data_WFL1/FeatureServer/6",
+    title: "Park Facilities",
+    outFields: ["Name"],
+    popupTemplate: popupFacility,
+    minScale: 10000,
+    maxScale: 0
+});
+
+// Adding the new layer 
+map.add(facilityLayer);
+
+// Define a pop-up for the recreation layer
+const popupTrail = {
+    "title": "Trail",
+    "content": "<b>Trail Name:</b> {TRAIL NAME}<br>" + 
+    "<b>Length:</b> {TrailLength}<br>" + 
+    "<b>Difficulty:</b> {Difficulty}<br>" + 
+    "<b>Useage:</b> {Useage}<br>" +
+    "<b>Blaze or Trail Marking Color:</b> {Blaze}<br>" + 
+    "<b>Current status: {Status}<br>"
+};
+
+// Adding recreation layer to the map
+window.trailLayer = new FeatureLayer({
+    url: "https://services.arcgis.com/HRPe58bUyBqyyiCt/arcgis/rest/services/FLSPTrails/FeatureServer/17",
+    title: "Trails",
+    outFields: ["TRAIL NAME", "Length", "Difficulty", "Useage", "Blaze", "Status"],
+    popupTemplate: popupTrail,
+    minScale: 0,
+});
+
+// Adding the new layer 
+map.add(trailLayer);
+
+
+// Create the Editor widget
+const editor = new Editor({
+      view: view,
+      container: "editorDiv",
+    });
+
+    editor.layerInfos = [
+      {
+        layer: reviewLayer,}];
+
+      // Create an Expand widget for the Editor
+    const editorExpand = new Expand({
+      view: view,
+      content: editor,
+      expandIconClass: "esri-icon-edit", 
+      group: "top-left"
+    });
+
+    // Add the Editor widget to the view
+    view.ui.add(editorExpand, "top-right");
+
+        });
+
+        //event listener for the filter
+        document.addEventListener("DOMContentLoaded", function() {
+    // Toggle layer visibility when a checkbox is changed
+    const layerCheckboxes = document.querySelectorAll("#layerToggle-section input[type='checkbox']");
+    layerCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener("change", function() {
+            switch (this.id) {
+                case "toggle-recLayer":
+                    window.recLayer.visible = this.checked;
+                    break;
+                case "toggle-campLayer":
+                    window.campLayer.visible = this.checked;
+                    break;
+                case "toggle-facilityLayer":
+                    window.facilityLayer.visible = this.checked;
+                    break;
+                case "toggle-trailLayer":
+                    window.trailLayer.visible = this.checked;
+                    break;
+                case "toggle-reviewLayer":
+                    window.reviewLayer.visible = this.checked;
+                    break;
+            }
+        });
+    });
+});
+
+
+  </script>
+
+</head>
+<body>
+    <div class="info-button-container">
+        <button id="infoButton" aria-label="Information">ℹ️</button>
+    </div>
+    <div id="infoModal" class="modal" style="display: block;">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Welcome to the First Landing State Park Interactive Map!</h2>
+            <p>This map application is designed to help you explore and navigate the park with ease. Here’s what you can do:</p>
+            <ul>
+                <li><strong>Explore the Map:</strong> Use your mouse or touchpad to pan around the map. Scroll to zoom in and out on the map to see more detail or to get an overview of the park.</li>
+                <li><strong>Toggle Map Layers:</strong> On the bottom left, you’ll find a section labeled 'Toggle Layers.' Use the checkboxes to show or hide different layers.</li>
+                <li><strong>Search for Campsites:</strong> Use the search bar in the top right corner to find a specific campsite. Enter the campsite number (e.g., site 100) and the map will zoom in on the location.</li>
+                <li><strong>Locate Yourself:</strong> Click on the locate button (symbolized by a target icon) next to the search widget to find your current location within the park.</li>
+                <li><strong>Learn More About a Feature:</strong> Click on any symbol or colored trail on the map to get more information, such as names, types, and other details.</li>
+                <li><strong>Leave a Trail Review:</strong> Select a trail and use the Editor widget (pen icon) to leave your own review of your trail experience.</li>
+            </ul>
+            <p>We hope this interactive map enhances your visit to First Landing State Park. Enjoy exploring!</p>
+        </div>
+    </div>
+    
+    
+    <div class="container">
+        <div class="header">
+        <h1>First Landing State Park</h1>
+        <h2>Virginia Beach, Virginia</h2>
+    </div>
+    <div class="map" id="viewDiv">
+        <div id="layerToggle-section">
+            <h3>Toggle Layers:</h3>
+            <div class="toggle-container">
+                <input id="toggle-recLayer" type="checkbox" checked/>
+                <label for="toggle-recLayer">Recreation Points of Interest</label>
+            </div>
+            <div class="toggle-container">
+                <input id="toggle-campLayer" type="checkbox" checked/>
+                <label for="toggle-campLayer">Campgrounds</label>
+            </div>
+            <div class="toggle-container">
+                <input id="toggle-facilityLayer" type="checkbox" checked/>
+                <label for="toggle-facilityLayer">Park Facilities</label>
+            </div>
+            <div class="toggle-container">
+                <input id="toggle-trailLayer" type="checkbox" checked/>
+                <label for="toggle-trailLayer">Trails</label>
+            </div>
+            <div class="toggle-container">
+                <input id="toggle-reviewLayer" type="checkbox" checked/>
+                <label for="toggle-reviewLayer">Trail Reviews</label>
+            </div>
+        </div>
+    
+</body>
+<script>
+    // Get the modal
+    var modal = document.getElementById("infoModal");
+    
+    // Get the button that opens the modal
+    var btn = document.getElementById("infoButton");
+    
+    // Get the <span> element that closes the modal
+    var span = document.getElementsByClassName("close")[0];
+    
+    // When the user clicks the button, open the modal 
+    btn.onclick = function() {
+        modal.style.display = "block";
+    }
+    
+    // When the user clicks on (x), the modal will be closed
+    span.onclick = function() {
+        modal.style.display = "none";
+    }
+    
+    // When the user clicks anywhere outside of the modal, it will be closed
+    window.onclick = function(event) {
+        if (event.target == modal) {
+            modal.style.display = "none";
+        }
+    }
+    </script>
+    
+</html>
